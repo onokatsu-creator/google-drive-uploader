@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>認証打刻</title>
+    <style>
+        html { font-size: 16px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Segoe UI", "Hiragino Kaku Gothic ProN", "ヒラギノ角ゴ ProN W3", Arial, "メイリオ", Meiryo, sans-serif; text-align: center; padding-top: 50px; background-color: #f4f7f6; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .message { font-size: 1.5rem; font-weight: bold; }
+        .time { font-size: 2.5rem; color: #007bff; margin: 20px 0; }
+        .status { font-size: 1.2rem; color: #6c757d; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <p id="message" class="message">処理中...</p>
+        <p id="time" class="time"></p>
+        <p id="status" class="status"></p>
+    </div>
+
+    <script>
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const workerId = urlParams.get('worker_id');
+            const messageEl = document.getElementById('message');
+            const statusEl = document.getElementById('status');
+
+            if (!workerId) {
+                messageEl.textContent = 'エラー';
+                statusEl.textContent = 'NFCカードの情報が正しくありません。(worker_idが見つかりません)';
+                return;
+            }
+
+            // ★★★ 位置情報取得の処理を開始 ★★★
+            if (!navigator.geolocation) {
+                messageEl.textContent = 'エラー';
+                statusEl.textContent = 'お使いのブラウザは位置情報取得に対応していません。';
+                // 位置情報なしで打刻を試みる場合は、以下のコメントを外す
+                // sendClockInRequest({ worker_id: workerId });
+                return;
+            }
+
+            messageEl.textContent = '位置情報を取得中...';
+            statusEl.textContent = 'ブラウザの上部に表示される「許可」をタップしてください。';
+
+            navigator.geolocation.getCurrentPosition(
+                // 位置情報の取得に成功した場合
+                (position) => {
+                    const payload = {
+                        worker_id: workerId,
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        accuracy: position.coords.accuracy
+                    };
+                    sendClockInRequest(payload);
+                },
+                // 位置情報の取得に失敗した場合
+                (error) => {
+                    let errorMessage = '位置情報の取得に失敗しました。';
+                    switch (error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMessage = "位置情報の利用が「ブロック」されたため、記録できません。";
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMessage = "現在地を特定できませんでした。";
+                            break;
+                        case error.TIMEOUT:
+                            errorMessage = "位置情報の取得がタイムアウトしました。";
+                            break;
+                    }
+                    messageEl.textContent = 'エラー';
+                    statusEl.textContent = errorMessage + '設定を確認するか、管理者にご連絡ください。';
+                    // 位置情報なしでも打刻を許可する場合は、以下のコメントを外す
+                    // sendClockInRequest({ worker_id: workerId });
+                }
+            );
+        };
+
+        // バックエンドに打刻リクエストを送信する関数
+        function sendClockInRequest(payload) {
+            const messageEl = document.getElementById('message');
+            const timeEl = document.getElementById('time');
+            const statusEl = document.getElementById('status');
+
+            messageEl.textContent = '認証を記録中...';
+            statusEl.textContent = '';
+
+            fetch('/record-attendance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    const workerName = result.worker_name;
+                    const today = new Date();
+                    const timeString = `${today.getHours().toString().padStart(2, '0')}:${today.getMinutes().toString().padStart(2, '0')}`;
+                    const todayString = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+
+                    localStorage.setItem('savedWorkerId', payload.worker_id);
+                    localStorage.setItem('savedWorkerName', workerName);
+                    localStorage.setItem('savedLoginDate', todayString);
+
+                    messageEl.textContent = `${workerName}さん、おはようございます！`;
+                    timeEl.textContent = timeString;
+                    statusEl.textContent = '認証に成功しました。作業を開始してください。';
+                } else {
+                    messageEl.textContent = 'エラー';
+                    statusEl.textContent = result.message;
+                }
+            })
+            .catch(error => {
+                messageEl.textContent = 'エラー';
+                statusEl.textContent = 'サーバーとの通信に失敗しました。';
+                console.error('Error:', error);
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>画像アップロードフォーム</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        /* (CSSの大部分は変更ありません) */
+        html, body { font-size: 16px; margin: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Segoe UI", "Hiragino Kaku Gothic ProN", "ヒラギノ角ゴ ProN W3", Arial, "メイリオ", Meiryo, sans-serif; background-color: #f4f7f6; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; position: relative; }
+        .work-header { text-align: center; margin-bottom: 2rem; padding: 1rem; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        #work-icon { font-size: 3rem; color: #007bff; margin-bottom: 0.5rem; }
+        #work-title { font-size: 1.8rem; margin: 0; color: #333; }
+        .form-group { margin-bottom: 1.5rem; }
+        label { display: block; font-size: 1.1rem; font-weight: bold; margin-bottom: 0.5rem; }
+        input, textarea, select { width: 100%; padding: 15px; font-size: 1.2rem; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; -webkit-appearance: none; appearance: none; }
+        input[type="file"] { padding: 10px; }
+        input[readonly] { background-color: #e9ecef; color: #495057; }
+        button { width: 100%; padding: 15px; font-size: 1.3rem; font-weight: bold; color: white; background-color: #007bff; border: none; border-radius: 8px; cursor: pointer; }
+        button:disabled { background-color: #cccccc; cursor: not-allowed; }
+        #login-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.7); color: white; display: flex; justify-content: center; align-items: center; text-align: center; z-index: 10; }
+        .worker-display { background-color: #fff; border: 1px solid #ccc; border-radius: 8px; padding: 15px; font-size: 1.2rem; }
+        .data-reg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .data-reg-button { padding: 20px 10px; font-size: 1rem; font-weight: bold; background-color: #e9ecef; color: #495057; border: 1px solid #ced4da; border-radius: 8px; cursor: pointer; text-align: center; }
+        .data-reg-button.active { background-color: #007bff; color: white; border-color: #007bff; }
+        .data-reg-form { margin-top: 1.5rem; padding: 20px; border: 1px solid #dee2e6; border-radius: 8px; background: #fff; }
+        #confirm-modal, #next-action-modal { display: none; position: fixed; z-index: 20; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); }
+        .modal-content { background-color: #fefefe; margin: 25% auto; padding: 20px; border: 1px solid #888; width: 90%; max-width: 500px; border-radius: 8px; }
+        #confirm-details { text-align: left; margin-bottom: 20px; word-wrap: break-word; }
+        #confirm-details p { margin: 8px 0; font-size: 1.1rem; }
+        .confirm-photo-container img { max-width: 100%; max-height: 200px; border-radius: 4px; margin-top: 10px;}
+        .modal-buttons { display: flex; flex-direction: column; justify-content: space-between; gap: 10px; }
+        .modal-buttons button { width: 100%; }
+        #confirm-no { background-color: #6c757d; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="login-overlay" style="display: none;"><p>はじめに、あなたの<br>NFCカードをかざして<br>認証してください</p></div>
+        <h1>画像アップロード</h1>
+        <div class="work-header">
+            <span id="work-icon"></span>
+            <h2 id="work-title"></h2>
+        </div>
+        <form id="kintoneForm" enctype="multipart/form-data">
+            <div class="form-group"><label for="placeID">場所ID:</label><input type="text" id="placeID" name="placeID" readonly></div>
+            <div class="form-group"><label for="houseID">ハウスID:</label><input type="text" id="houseID" name="houseID" readonly></div>
+            <div class="form-group"><label for="treiID">トレイID:</label><input type="text" id="treiID" name="treiID" readonly></div>
+            <div class="form-group"><label>作業者:</label><div id="worker-name-display" class="worker-display">未ログイン</div><input type="hidden" id="username" name="username"><input type="hidden" id="worker_id" name="worker_id"></div>
+            <hr style="margin: 2rem 0;">
+
+            <div class="dynamic-field" id="work_area_ocr" style="display: none;">
+                <p>アップロードする画像の種類を選択してください。</p>
+                <div class="data-reg-grid">
+                    <button type="button" class="data-reg-button" data-target="form_npk_test">NPK</button>
+                    </div>
+                <div id="data-reg-forms-container">
+                    <div id="form_npk_test" class="data-reg-form" style="display: none;">
+                        <label for="photo_npk_test_type">土壌検査の写真を添付:</label>
+                        <input type="file" name="photo_npk_test_type" accept="image/*">
+                    </div>
+                    </div>
+            </div>
+            <hr style="border: none; border-top: 2px solid #eee; margin: 2rem 0;">
+            <div class="form-group"><label for="memo">メモ:</label><textarea id="memo" name="memo" rows="4"></textarea></div>
+
+            <button type="submit">アップロード実行</button>
+        </form>
+    </div>
+
+    <div id="confirm-modal"><div class="modal-content"><h2>入力内容の確認</h2><div id="confirm-details"></div><div class="modal-buttons" style="flex-direction: row;"><button type="button" id="confirm-no">いいえ、修正する</button><button type="button" id="confirm-yes">はい、送信する</button></div></div></div>
+    <div id="next-action-modal"><div class="modal-content"><h2>登録しました！</h2><p>次の操作を選択してください。</p><div class="modal-buttons"><button type="button" id="choice-continue">続けて同じトレイを入力する</button><button type="button" id="choice-new-work" style="background-color: #6c757d;">新たな作業をする</button></div></div></div>
+
+    <script>
+        // ★★★ workID=ocr の設定を追加 ★★★
+        const workConfigs = {
+            'ocr': { title: 'OCR画像登録', icon: '<i class="fas fa-camera-retro"></i>' },
+            'water': { title: '水槽の記録', icon: '<i class="fas fa-tint"></i>' }
+        };
+
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const placeID = urlParams.get('placeID');
+            const houseID = urlParams.get('houseID');
+            const treiID = urlParams.get('treiID');
+            const workID = urlParams.get('workID');
+
+            if (placeID) document.getElementById('placeID').value = placeID;
+            if (houseID) document.getElementById('houseID').value = houseID;
+            if (treiID) document.getElementById('treiID').value = treiID;
+
+            updateUIByWorkID(workID);
+            checkLoginStatus();
+        };
+
+        function updateUIByWorkID(workID) {
+            const iconEl = document.getElementById('work-icon');
+            const titleEl = document.getElementById('work-title');
+            document.querySelectorAll('.dynamic-field').forEach(field => field.style.display = 'none');
+
+            const config = workConfigs[workID];
+            if (config) {
+                iconEl.innerHTML = config.icon;
+                titleEl.textContent = config.title;
+                // ★★★ workIDに応じたUI表示 ★★★
+                if (workID === 'ocr') {
+                    document.getElementById('work_area_ocr').style.display = 'block';
+                    setupDataRegistrationMenu(); // NPKボタンのイベントを設定
+                }
+            } else {
+                iconEl.innerHTML = '<i class="fas fa-hand-pointer"></i>';
+                titleEl.textContent = '新たな作業のNFCをかざしてください';
+            }
+        }
+
+        function checkLoginStatus() {
+            const savedId = localStorage.getItem('savedWorkerId');
+            const savedName = localStorage.getItem('savedWorkerName');
+            const savedDate = localStorage.getItem('savedLoginDate');
+            const today = new Date();
+            const todayString = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+            if (savedId && savedName && savedDate === todayString) {
+                document.getElementById('login-overlay').style.display = 'none';
+                document.getElementById('worker-name-display').textContent = savedName;
+                document.getElementById('username').value = savedName;
+                document.getElementById('worker_id').value = savedId;
+                document.querySelector('button[type="submit"]').disabled = false;
+            } else {
+                document.getElementById('login-overlay').style.display = 'flex';
+                document.querySelector('button[type="submit"]').disabled = true;
+            }
+        }
+
+        // NPKボタンなどを押したときに、対応するフォームを表示する関数
+        function setupDataRegistrationMenu() {
+            const buttons = document.querySelectorAll('.data-reg-button');
+            const forms = document.querySelectorAll('.data-reg-form');
+            if(buttons.length === 0 || forms.length === 0) return;
+            buttons.forEach(button => {
+                button.addEventListener('click', function() {
+                    buttons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                    forms.forEach(form => form.style.display = 'none');
+                    const targetId = this.getAttribute('data-target');
+                    const targetElement = document.getElementById(targetId);
+                    if (targetElement) { targetElement.style.display = 'block'; }
+                });
+            });
+        }
+
+        // 送信ボタンの処理
+        document.getElementById('kintoneForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+            let detailsHtml = '';
+
+            const npkPhoto = formData.get('photo_npk_test_type');
+            if (npkPhoto && npkPhoto.size > 0) {
+                 detailsHtml += `<div class="confirm-photo-container"><p><strong>NPK(土壌検査)の写真:</strong></p><img src="${URL.createObjectURL(npkPhoto)}"></div>`;
+            }
+            const memo = formData.get('memo');
+            if (memo) detailsHtml += `<p><strong>メモ:</strong> ${memo}</p>`;
+
+            if (detailsHtml.trim() === '') {
+                alert('記録するデータが入力されていません。');
+                return;
+            }
+
+            document.getElementById('confirm-details').innerHTML = detailsHtml;
+            document.getElementById('confirm-modal').style.display = 'block';
+        });
+
+        // モーダルのはい・いいえボタンの処理（変更なし）
+        document.getElementById('confirm-no').addEventListener('click', function() { document.getElementById('confirm-modal').style.display = 'none'; });
+        document.getElementById('confirm-yes').addEventListener('click', function() {
+            const form = document.getElementById('kintoneForm');
+            const formData = new FormData(form);
+            const submitButton = form.querySelector('button[type="submit"]');
+            document.getElementById('confirm-modal').style.display = 'none';
+            submitButton.disabled = true;
+            submitButton.textContent = '送信中...';
+
+            fetch('/submit', { method: 'POST', body: formData, })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    document.getElementById('next-action-modal').style.display = 'block';
+                } else {
+                    alert('エラー: ' + result.message);
+                }
+            })
+            .catch(error => {
+                console.error('送信エラー:', error);
+                alert('送信中に予期せぬエラーが発生しました。');
+            })
+            .finally(() => {
+                submitButton.disabled = false;
+                submitButton.textContent = 'アップロード実行';
+            });
+        });
+
+        document.getElementById('choice-continue').addEventListener('click', function() {
+            // フォームのリセット処理
+             const form = document.getElementById('kintoneForm');
+             const fieldsToReset = [ 'photo_npk_test_type', 'memo' ];
+             fieldsToReset.forEach(name => {
+                const field = form.querySelector(`[name="${name}"]`);
+                if(field) field.value = '';
+            });
+            document.querySelectorAll('.data-reg-button.active').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.data-reg-form').forEach(frm => frm.style.display = 'none');
+            document.getElementById('next-action-modal').style.display = 'none';
+        });
+        document.getElementById('choice-new-work').addEventListener('click', function() { window.location.href = '/'; });
+    </script>
+</body>
+</html>
