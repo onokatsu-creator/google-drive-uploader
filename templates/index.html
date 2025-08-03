@@ -6,7 +6,7 @@
     <title>画像アップロードフォーム</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <style>
-        /* (CSSの大部分は変更ありません) */
+        /* (CSS部分は変更ありません) */
         html, body { font-size: 16px; margin: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Segoe UI", "Hiragino Kaku Gothic ProN", "ヒラギノ角ゴ ProN W3", Arial, "メイリオ", Meiryo, sans-serif; background-color: #f4f7f6; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; position: relative; }
@@ -55,14 +55,20 @@
                 <p>アップロードする画像の種類を選択してください。</p>
                 <div class="data-reg-grid">
                     <button type="button" class="data-reg-button" data-target="form_npk_test">NPK</button>
-                    </div>
+                    <button type="button" class="data-reg-button" data-target="form_habitat_image">生息画像</button>
+                </div>
                 <div id="data-reg-forms-container">
                     <div id="form_npk_test" class="data-reg-form" style="display: none;">
                         <label for="photo_npk_test_type">土壌検査の写真を添付:</label>
                         <input type="file" name="photo_npk_test_type" accept="image/*">
                     </div>
+                    <div id="form_habitat_image" class="data-reg-form" style="display: none;">
+                        <label for="habitat_image">生息画像を添付:</label>
+                        <input type="file" name="habitat_image" accept="image/*">
                     </div>
+                </div>
             </div>
+
             <hr style="border: none; border-top: 2px solid #eee; margin: 2rem 0;">
             <div class="form-group"><label for="memo">メモ:</label><textarea id="memo" name="memo" rows="4"></textarea></div>
 
@@ -74,9 +80,8 @@
     <div id="next-action-modal"><div class="modal-content"><h2>登録しました！</h2><p>次の操作を選択してください。</p><div class="modal-buttons"><button type="button" id="choice-continue">続けて同じトレイを入力する</button><button type="button" id="choice-new-work" style="background-color: #6c757d;">新たな作業をする</button></div></div></div>
 
     <script>
-        // ★★★ workID=ocr の設定を追加 ★★★
         const workConfigs = {
-            'ocr': { title: 'OCR画像登録', icon: '<i class="fas fa-camera-retro"></i>' },
+            'ocr': { title: '画像登録', icon: '<i class="fas fa-camera-retro"></i>' },
             'water': { title: '水槽の記録', icon: '<i class="fas fa-tint"></i>' }
         };
 
@@ -104,10 +109,9 @@
             if (config) {
                 iconEl.innerHTML = config.icon;
                 titleEl.textContent = config.title;
-                // ★★★ workIDに応じたUI表示 ★★★
                 if (workID === 'ocr') {
                     document.getElementById('work_area_ocr').style.display = 'block';
-                    setupDataRegistrationMenu(); // NPKボタンのイベントを設定
+                    setupDataRegistrationMenu();
                 }
             } else {
                 iconEl.innerHTML = '<i class="fas fa-hand-pointer"></i>';
@@ -121,6 +125,7 @@
             const savedDate = localStorage.getItem('savedLoginDate');
             const today = new Date();
             const todayString = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+
             if (savedId && savedName && savedDate === todayString) {
                 document.getElementById('login-overlay').style.display = 'none';
                 document.getElementById('worker-name-display').textContent = savedName;
@@ -133,7 +138,6 @@
             }
         }
 
-        // NPKボタンなどを押したときに、対応するフォームを表示する関数
         function setupDataRegistrationMenu() {
             const buttons = document.querySelectorAll('.data-reg-button');
             const forms = document.querySelectorAll('.data-reg-form');
@@ -150,40 +154,69 @@
             });
         }
 
-        // 送信ボタンの処理
         document.getElementById('kintoneForm').addEventListener('submit', function(event) {
             event.preventDefault();
             const form = event.target;
             const formData = new FormData(form);
-            let detailsHtml = '';
+            const activeFormId = document.querySelector('.data-reg-button.active')?.getAttribute('data-target');
 
-            const npkPhoto = formData.get('photo_npk_test_type');
-            if (npkPhoto && npkPhoto.size > 0) {
-                 detailsHtml += `<div class="confirm-photo-container"><p><strong>NPK(土壌検査)の写真:</strong></p><img src="${URL.createObjectURL(npkPhoto)}"></div>`;
+            if (!activeFormId) {
+                alert('「NPK」または「生息画像」のどちらかを選択してください。');
+                return;
             }
+
+            let detailsHtml = '';
+            let imageToShow = null;
+
+            if (activeFormId === 'form_npk_test') {
+                imageToShow = formData.get('photo_npk_test_type');
+                if (imageToShow && imageToShow.size > 0) {
+                     detailsHtml += `<div class="confirm-photo-container"><p><strong>NPK(土壌検査)の写真:</strong></p><img id="confirm-img-preview"></div>`;
+                }
+            } else if (activeFormId === 'form_habitat_image') {
+                imageToShow = formData.get('habitat_image');
+                 if (imageToShow && imageToShow.size > 0) {
+                     detailsHtml += `<div class="confirm-photo-container"><p><strong>生息画像の写真:</strong></p><img id="confirm-img-preview"></div>`;
+                }
+            }
+
             const memo = formData.get('memo');
             if (memo) detailsHtml += `<p><strong>メモ:</strong> ${memo}</p>`;
 
-            if (detailsHtml.trim() === '') {
-                alert('記録するデータが入力されていません。');
+            if (!imageToShow || imageToShow.size === 0) {
+                alert('記録する画像が選択されていません。');
                 return;
             }
 
             document.getElementById('confirm-details').innerHTML = detailsHtml;
+            if (imageToShow) {
+                const imgPreview = document.getElementById('confirm-img-preview');
+                if(imgPreview) imgPreview.src = URL.createObjectURL(imageToShow);
+            }
             document.getElementById('confirm-modal').style.display = 'block';
         });
 
-        // モーダルのはい・いいえボタンの処理（変更なし）
-        document.getElementById('confirm-no').addEventListener('click', function() { document.getElementById('confirm-modal').style.display = 'none'; });
         document.getElementById('confirm-yes').addEventListener('click', function() {
             const form = document.getElementById('kintoneForm');
             const formData = new FormData(form);
             const submitButton = form.querySelector('button[type="submit"]');
+            const activeFormId = document.querySelector('.data-reg-button.active')?.getAttribute('data-target');
+
+            let fetchUrl;
+            if (activeFormId === 'form_npk_test') {
+                fetchUrl = '/submit';
+            } else if (activeFormId === 'form_habitat_image') {
+                fetchUrl = '/upload_habitat_image';
+            } else {
+                alert('処理の種類が選択されていません。');
+                return;
+            }
+
             document.getElementById('confirm-modal').style.display = 'none';
             submitButton.disabled = true;
             submitButton.textContent = '送信中...';
 
-            fetch('/submit', { method: 'POST', body: formData, })
+            fetch(fetchUrl, { method: 'POST', body: formData })
             .then(response => response.json())
             .then(result => {
                 if (result.success) {
@@ -202,10 +235,11 @@
             });
         });
 
+        document.getElementById('confirm-no').addEventListener('click', function() { document.getElementById('confirm-modal').style.display = 'none'; });
+
         document.getElementById('choice-continue').addEventListener('click', function() {
-            // フォームのリセット処理
              const form = document.getElementById('kintoneForm');
-             const fieldsToReset = [ 'photo_npk_test_type', 'memo' ];
+             const fieldsToReset = ['photo_npk_test_type', 'habitat_image', 'memo'];
              fieldsToReset.forEach(name => {
                 const field = form.querySelector(`[name="${name}"]`);
                 if(field) field.value = '';
@@ -214,6 +248,7 @@
             document.querySelectorAll('.data-reg-form').forEach(frm => frm.style.display = 'none');
             document.getElementById('next-action-modal').style.display = 'none';
         });
+
         document.getElementById('choice-new-work').addEventListener('click', function() { window.location.href = '/'; });
     </script>
 </body>
